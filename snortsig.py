@@ -147,6 +147,9 @@ class SnortSig(object):
             sigs = f.read()
         self.fromString(sigs)
 
+    def getall(self):
+        return self.sigs
+
     def search(self, term, attribute=None, exact=True):
         ret = []
         if attribute is not None:
