@@ -5,6 +5,7 @@ import itertools
 
 class SnortSig(object):
 
+    #TODO: oh so many comments
     _proto = Or([CaselessLiteral("tcp"), CaselessLiteral("udp"), CaselessLiteral("icmp"), CaselessLiteral("ip")])
     _direction = Or([Literal("<>"),Literal("->")])
     _action = Or([CaselessLiteral("pass"),
@@ -84,6 +85,7 @@ class SnortSig(object):
     _signature = Optional(OneOrMore("#"))("disabled") + _action("action") + _proto("protocol") + _src_dst("src") + _ports("src_port") + _direction("direction") + _src_dst("dst") + _ports("dst_port") + Suppress("(") + Dict(OneOrMore(Group(_element)))("payload") + Suppress(")")
 
     def __init__(self):
+        #TODO: sigs, attribs and unparsable should probably be "private"
         self.sigs = []
         self.attribs = collections.Counter()
         self.unparsable = []
@@ -96,10 +98,15 @@ class SnortSig(object):
                 #TODO: handle line comments
                 self.unparsable.append(line)
             else:
+                #pyparsing leaves us with a pretty ugly data structure.  Let's fix that...
                 payload = sig["payload"]
                 options = {}
                 for e in payload:
+                    #TODO: preserve relative order among all payload options
+                    #we use this as a sanity check in search()
                     self.attribs.update([e[0]])
+                    #there is probably some magic python syntax hack to make this less verbose
+                    #but it's 1 AM and I can't think of it.
                     if options.has_key(e[0]):
                         value=[]
                         for i in e[1:]:
@@ -117,19 +124,23 @@ class SnortSig(object):
                                 value.append(i)
                         options[e[0]] = [value]
 
+                #flatten out our options a touch.
                 for k,v in options.items():
                     if(isinstance(v,list) and len(v) == 1):
                         chain = itertools.chain.from_iterable(v)
                         options[k]=list(chain)
                         
-            
+
+                #TODO: make this less horrible.  I blame pyparsing.
+                #sig is a pyparsing result object, not a dict, so no has_key()
+                #this is another 1 AM hack, and needs to be done some other way
                 disabled = '1'
                 try:
                     sig["disabled"]
                 except:
                     disabled = '0'
 
-                tmp_sig = {
+                self.sigs.append({
                                  "disabled": [disabled],
                                  "action": [sig["action"]],
                                  "protocol": [sig["protocol"]],
@@ -139,8 +150,7 @@ class SnortSig(object):
                                  "dst": sig["dst"].asList(),
                                  "dst_port": sig["dst_port"].asList(),
                                  "options": options
-                }
-                self.sigs.append(tmp_sig)
+                })
 
     def fromFile(self, file):
         with open(file, 'rb') as f:

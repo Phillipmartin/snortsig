@@ -76,14 +76,32 @@ How many signatures use the 'itype' attribute?
     ss.fromFile("emerging-all.rules")
     ss.fromString('alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"MALWARE-CNC Sality logo.gif URLs"; flow:to_server,established; content:"/logo.gif?"; fast_pattern:only; http_uri; pcre:"/\x2Flogo\.gif\x3F[0-9a-f]{5,7}=\d{5,7}/Ui"; metadata:policy balanced-ips drop, policy security-ips drop, ruleset community, service http; reference:url,www.microsoft.com/security/portal/Threat/Encyclopedia/Entry.aspx?name=Virus%3aWin32%2fSality.AT; classtype:trojan-activity; sid:24255; rev:3;)')
 
+### fromString(string)
+
+Parse the provided string and extract the snort signatures
+
+### fromFile(file)
+
+Read the supplied file and feed it to fromString()
+
+### getall()
+
+Return all parsed signatures as a list of signature dicts.
+
 ### search(term, attribute=None, exact=False)
 
-Search through all imported signatures and return those that match the query.
+Search through all imported signatures and return those that match the query as a list of signature dicts.
+   * term is a string to match.
+   * attribute is the name of an option or header to search.  If attribute is None, search all options and headers.
+   * exact controls the match type, exact or substring.
 
+For example, return all signatures with the pcre option:
+
+    search("",attribute="pcre",exact=False)
 
 ### unparsed()
 
-ss.unparsed()
+Return all signatures that failed parsing as a list of strings
 
 ### Work with individual signatures
 
