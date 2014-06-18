@@ -37,8 +37,10 @@ def test_parse_VRT_community():
     assert len(ss.getall()) == len(ss.search("1",attribute="disabled")) + len(ss.search("0",attribute="disabled"))
 
 def test_parse_ET_Open():
-    #TODO: implement test with the ET Open ruleset
-    pass
+    response = requests.get('https://rules.emergingthreats.net/open-nogpl/snort-2.9.0/emerging-all.rules')
+    ss = snortsig.SnortSig()
+    ss.fromstring(response.text)
+    assert len(ss.getall()) == len(ss.search("1",attribute="disabled")) + len(ss.search("0",attribute="disabled"))
 
 if __name__ == '__main__':
     pytest.main()
