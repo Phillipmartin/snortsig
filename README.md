@@ -2,8 +2,9 @@
 A read-only (for now) interface to snort signatures using pyparsing on the back end.  You can parse signatures from multiple files, or just via a string.  Once parsed, you can use the search() method to retrieve signatures with specific attributes.
 
 ## Known Bugs
-snortsig currently doesn't deal well with escaped semi-colons.
-snortsig can't write signatures back out to strings or files.
+   * snortsig currently doesn't deal well with escaped semi-colons.
+   * snortsig currently doesn't deal well with double quotes inside quoted fields.
+   * snortsig can't write signatures back out to strings or files.
 
 ## Example
 

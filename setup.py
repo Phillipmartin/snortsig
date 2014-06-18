@@ -36,7 +36,7 @@ setup(
     author='Philip Martin',
     author_email='phillip.martin@gmail.com',
     description='A module to simplify working with Snort signatures',
-    py_modules   = ["virustotal2"],
+    py_modules   = ["snortsig"],
     long_description=read_md('README.md'),
     classifiers=[
         "Development Status :: 4 - Beta",
