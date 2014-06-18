@@ -1,4 +1,5 @@
 # snortsig
+[![Build Status](https://travis-ci.org/Phillipmartin/snortsig.svg?branch=master)](https://travis-ci.org/Phillipmartin/snortsig)
 A read-only (for now) interface to snort signatures using pyparsing on the back end.  You can parse signatures from multiple files, or just via a string.  Once parsed, you can use the search() method to retrieve signatures with specific attributes.
 
 ## Known Bugs
