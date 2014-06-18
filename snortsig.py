@@ -7,7 +7,7 @@ class SnortSig(object):
 
     #TODO: oh so many comments
     _proto = Or([CaselessLiteral("tcp"), CaselessLiteral("udp"), CaselessLiteral("icmp"), CaselessLiteral("ip")])
-    _direction = Or([Literal("<>"),Literal("->")])
+    _direction = Or([Literal("<>"), Literal("->")])
     _action = Or([CaselessLiteral("pass"),
                   CaselessLiteral("alert"),
                   CaselessLiteral("reject"),
@@ -15,20 +15,20 @@ class SnortSig(object):
                   CaselessLiteral("activate"),
                   CaselessLiteral("dynamic"),
                   CaselessLiteral("drop"),
-                  CaselessLiteral("sdrop")]
-    )
+                  CaselessLiteral("sdrop")
+                ])
     dbl2 = Regex('"(?:[^"\\n\\r\\\\]|(?:\\\\")|(?:\\\\x[0-9a-fA-F]+)|(?:\\\\.))*"')
     dbl2.setParseAction(removeQuotes)
     _ipaddr = Combine(Word(nums) + ('.'+Word(nums))*3)
     _range = Combine(_ipaddr + '/' + Word(nums))
     _variable = Combine('$'+Word(alphanums+"_"))
     _ipaddr_list = Suppress("[") + delimitedList(Or([_ipaddr,_range,_variable])) + Suppress("]")
-    _port_nums = Optional("!") + Or(
-            [Optional(":") + Word(nums) + Optional(":"),
-            Word(nums) + ":" + Word(nums),
-            ]
-            )
-    _port_list = Suppress("[") + delimitedList(Or([_port_nums,_variable])) + Suppress("]")
+    _port_nums = Optional("!") + \
+                 Or([
+                     Optional(":") + Word(nums) + Optional(":"),
+                     Word(nums) + ":" + Word(nums),
+                ])
+    _port_list = Suppress("[") + delimitedList(Or([_port_nums, _variable])) + Suppress("]")
     _ports = Optional("!")+Or([_port_nums, _port_list, _variable, CaselessLiteral("any")])
     _key = Word(alphanums+"_")+Suppress(":")
     _noparam_element = Word(alphanums+"_")+Suppress(";")
@@ -89,14 +89,22 @@ class SnortSig(object):
         self.sigs = []
         self.attribs = collections.Counter()
         self.unparsable = []
+        self.comments = []
 
-    def fromString(self, sigs):
-        for line in sigs.splitlines():
+    def fromstring(self, sigs):
+        for sigline in sigs.splitlines():
             try:
-                sig = self._signature.parseString(line)
+                sig = self._signature.parseString(sigline)
             except:
                 #TODO: handle line comments
-                self.unparsable.append(line)
+                sig_header = '#'+self._action
+                try:
+                    sig_header.parseString(sigline)
+                except:
+                    self.comments.append(sigline)
+                else:
+                    self.unparsable.append(sigline)
+
             else:
                 #pyparsing leaves us with a pretty ugly data structure.  Let's fix that...
                 payload = sig["payload"]
@@ -107,29 +115,28 @@ class SnortSig(object):
                     self.attribs.update([e[0]])
                     #there is probably some magic python syntax hack to make this less verbose
                     #but it's 1 AM and I can't think of it.
-                    if options.has_key(e[0]):
-                        value=[]
+                    if e[0] in options:
+                        value = []
                         for i in e[1:]:
-                            if(isinstance(i,ParseResults)):
+                            if isinstance(i, ParseResults):
                                 value.append(i.asList())
                             else:
                                 value.append(i)
                         options[e[0]].append(value)
                     else:
-                        value=[]
+                        value = []
                         for i in e[1:]:
-                            if(isinstance(i,ParseResults)):
+                            if isinstance(i, ParseResults):
                                 value.append(i.asList())
                             else:
                                 value.append(i)
                         options[e[0]] = [value]
 
                 #flatten out our options a touch.
-                for k,v in options.items():
-                    if(isinstance(v,list) and len(v) == 1):
+                for k, v in options.items():
+                    if isinstance(v, list) and len(v) == 1:
                         chain = itertools.chain.from_iterable(v)
-                        options[k]=list(chain)
-                        
+                        options[k] = list(chain)
 
                 #TODO: make this less horrible.  I blame pyparsing.
                 #sig is a pyparsing result object, not a dict, so no has_key()
@@ -137,7 +144,7 @@ class SnortSig(object):
                 disabled = '1'
                 try:
                     sig["disabled"]
-                except:
+                except KeyError:
                     disabled = '0'
 
                 self.sigs.append({
@@ -149,13 +156,15 @@ class SnortSig(object):
                                  "direction": [sig["direction"]],
                                  "dst": sig["dst"].asList(),
                                  "dst_port": sig["dst_port"].asList(),
-                                 "options": options
+                                 "options": options,
+                                 "comments": self.comments
                 })
+                self.comments = []
 
-    def fromFile(self, file):
-        with open(file, 'rb') as f:
+    def fromfile(self, sigfile):
+        with open(sigfile, 'rb') as f:
             sigs = f.read()
-        self.fromString(sigs)
+        self.fromstring(sigs)
 
     def getall(self):
         return self.sigs
@@ -165,28 +174,29 @@ class SnortSig(object):
         if attribute is not None:
             if attribute in self.attribs:
                 for s in self.sigs:
-                    if(attribute in s["options"].keys() and self._list_search(s["options"][attribute], term, exact)):
+                    if attribute in s["options"].keys() and self._list_search(s["options"][attribute], term, exact):
                         ret.append(s)
             else:
                 for s in self.sigs:
-                    if s.has_key(attribute) and self._list_search(s[attribute], term, exact):
+                    if attribute in s and self._list_search(s[attribute], term, exact):
                         ret.append(s)
         else:
             for s in self.sigs:
-                for k,v in s.items():
+                for k, v in s.items():
+                    if k == 'comments':
+                        continue
                     if self._list_search(v, term, exact):
                         ret.append(s)
                         break
         return ret
 
     def _list_search(self, search, term, exact):
-        
-        if isinstance(search,basestring):
+        if isinstance(search, basestring):
             if(exact and search == term) or (not exact and term in search):
                 return True
         
         if isinstance(search, dict):
-            for k,v in search.items():
+            for k, v in search.items():
                 if self._list_search(v, term, exact):
                     return True
         
