@@ -29,7 +29,6 @@ class PyTest(TestCommand):
 setup(
     name='snortsig',
     version='0.1',
-    packages=[''],
     requires=['pyparsing'],
     tests_require = ["tarfile", "requests"],
     cmdclass = {'test': PyTest},
