@@ -30,7 +30,7 @@ setup(
     name='snortsig',
     version='0.1',
     requires=['pyparsing'],
-    tests_require = ["tarfile", "requests"],
+    tests_require = ["requests"],
     cmdclass = {'test': PyTest},
     url='http://www.github.com/Phillipmartin/snortsig',
     license='MIT',
