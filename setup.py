@@ -28,11 +28,12 @@ class PyTest(TestCommand):
 
 setup(
     name='snortsig',
-    version='0.1',
+    version='0.2',
     requires=['pyparsing'],
     tests_require = ["requests"],
     cmdclass = {'test': PyTest},
     url='http://www.github.com/Phillipmartin/snortsig',
+    include_package_data=True,
     license='MIT',
     author='Philip Martin',
     author_email='phillip.martin@gmail.com',
