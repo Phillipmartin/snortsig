@@ -6,6 +6,7 @@ import StringIO
 
 #TODO: add search tests
 #TODO: add tests with known difficult signatures
+#TODO: add tests with sigs that cover all options
 
 def test_parse_content_order():
     #TODO: implement content order tests
@@ -26,6 +27,7 @@ def test_single_sig():
     assert len(sig_obj[0]["dst"]) == 1
     assert len(sig_obj[0]["dst_port"]) == 2
     assert sig_obj[0]["dst_port"][1] == '443'
+    assert sig_obj[0]["raw"] == 'alert tcp [$HOME_NET,10.1.1.1,10.1.1.0/24] any -> $EXTERNAL_NET [$HTTP_PORTS,443] (msg:"MALWARE-CNC Sality logo.gif URLs"; flow:to_server,established; content:"/logo.gif?"; fast_pattern:only; http_uri; pcre:"/\x2Flogo\.gif\x3F[0-9a-f]{5,7}=\d{5,7}/Ui"; metadata:policy balanced-ips drop, policy security-ips drop, ruleset community, service http; reference:url,www.microsoft.com/security/portal/Threat/Encyclopedia/Entry.aspx?name=Virus%3aWin32%2fSality.AT; classtype:trojan-activity; sid:24255; rev:3;)'
 
 def test_parse_VRT_community():
     response = requests.get("https://s3.amazonaws.com/snort-org/www/rules/community/community-rules.tar.gz")

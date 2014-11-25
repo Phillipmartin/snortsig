@@ -17,12 +17,16 @@ class SnortSig(object):
                   CaselessLiteral("drop"),
                   CaselessLiteral("sdrop")
                 ])
+    #a custom double-quoted string regex
     dbl2 = Regex('"(?:[^"\\n\\r\\\\]|(?:\\\\")|(?:\\\\x[0-9a-fA-F]+)|(?:\\\\.))*"')
     dbl2.setParseAction(removeQuotes)
+    #TODO: validate number ranges
     _ipaddr = Combine(Word(nums) + ('.'+Word(nums))*3)
+    #TODO: validate CIDR range value
     _range = Combine(_ipaddr + '/' + Word(nums))
     _variable = Combine('$'+Word(alphanums+"_"))
     _ipaddr_list = Suppress("[") + delimitedList(Or([_ipaddr,_range,_variable])) + Suppress("]")
+    #TODO: validate port range
     _port_nums = Optional("!") + \
                  Or([
                      Optional(":") + Word(nums) + Optional(":"),
@@ -30,11 +34,17 @@ class SnortSig(object):
                 ])
     _port_list = Suppress("[") + delimitedList(Or([_port_nums, _variable])) + Suppress("]")
     _ports = Optional("!")+Or([_port_nums, _port_list, _variable, CaselessLiteral("any")])
+    #the key portion of the key-value pair in snort options
     _key = Word(alphanums+"_")+Suppress(":")
+    #elements like nocase; that have no values
     _noparam_element = Word(alphanums+"_")+Suppress(";")
+    #a list of key: value pairs seperated by commas
     _delimited_pairs_element = _key+delimitedList(Or([Word(alphanums+"*_?%~+^<>()=#@&:!|./- "), Word(alphanums+"_")+Word(alphanums+"_-")]))+Suppress(";")
+    #elements like msg: "something here";
     _quoted_element = _key+dbl2+Suppress(";")
+    #elements like sid: 123456
     _number_element = _key+Optional("!")+Word(nums)+Suppress(";")
+    #basic numeric ranges 1-100, <100, etc
     _number_range = Optional("!")+Or([
                             Word(nums)+"<>"+Word(nums),
                             ">"+Optional("=")+Word(nums),
@@ -43,16 +53,24 @@ class SnortSig(object):
                             "-"+Word(nums),
                             Word(nums)+"-",
                             Word(nums)+"-"+Word(nums)])
+    #the urilen element
     _urilen_element = CaselessLiteral("urilen")+Suppress(":")+_number_range+Optional(Literal(",")+Or([Literal("norm"),Literal("raw")]))+Suppress(";")
+    #simple number ranges
     _simple_range_element = _key+_number_range+Suppress(";")
+    #simple single-word elements
     _word_element = _key+Word(alphas+"!<>+*-")+Suppress(";")
+    #the metadata element
     _metadata_element = CaselessLiteral("metadata")+Suppress(":")+delimitedList(Group(Word(alphanums+"_") + Or([quotedString,OneOrMore(Word(alphanums+"_|-"))]) )) + Suppress(";")
+    #an element of the form key: value,value2,value3
     _delilmited_element = Word(alphas)+Suppress(":")+delimitedList(Word(alphanums+"*?%~._+<>=&!|-"))+Suppress(";")
+    #the pcre element
     _pcre_element = CaselessLiteral("pcre")+Suppress(":")+Optional("!")+dbl2+Suppress(";")
+    #all of the elements that can modify a content match
     _content_modifier = Or([
         CaselessLiteral("nocase")+Suppress(";"),
         CaselessLiteral("rawbytes")+Suppress(";"),
         Group(CaselessLiteral("depth")+Suppress(":")+Word(alphanums+"_")+Suppress(";")),
+        Group(CaselessLiteral("hash")+Suppress(":")+Or([CaselessLiteral("sha512"),CaselessLiteral("sha256"),CaselessLiteral("md5")])+Suppress(";")),
         Group(CaselessLiteral("offset")+Suppress(":")+Word(alphanums+"_")+Suppress(";")),
         Group(CaselessLiteral("distance")+Suppress(":")+Word(alphanums+"_")+Suppress(";")),
         Group(CaselessLiteral("within")+Suppress(":")+Word(alphanums+"_")+Suppress(";")),
@@ -68,7 +86,9 @@ class SnortSig(object):
         CaselessLiteral("http_stat_msg")+Suppress(";"),
         Group(CaselessLiteral("fast_pattern")+Optional(Suppress(":")+Word(alphanums+"_"))+Suppress(";")),
     ])
-    _content_element = Or([CaselessLiteral("content"),CaselessLiteral("uricontent")])+Suppress(":")+Optional("!")+dbl2+Suppress(";")+ZeroOrMore(_content_modifier)
+    #the content or uricontent elements
+    _content_element = Or([CaselessLiteral("protected_content"),CaselessLiteral("content"),CaselessLiteral("uricontent")])+Suppress(":")+Optional("!")+dbl2+Suppress(";")+ZeroOrMore(_content_modifier)
+    #all of the elements that can appear as an option
     _element = Or([
                    _content_element,
                    _pcre_element,
@@ -96,7 +116,6 @@ class SnortSig(object):
             try:
                 sig = self._signature.parseString(sigline)
             except:
-                #TODO: handle line comments
                 sig_header = '#'+self._action
                 try:
                     sig_header.parseString(sigline)
@@ -116,6 +135,7 @@ class SnortSig(object):
                     #there is probably some magic python syntax hack to make this less verbose
                     #but it's 1 AM and I can't think of it.
                     if e[0] in options:
+                        #this branch covers repeated options in a signature with different values
                         value = []
                         for i in e[1:]:
                             if isinstance(i, ParseResults):
@@ -124,6 +144,7 @@ class SnortSig(object):
                                 value.append(i)
                         options[e[0]].append(value)
                     else:
+                        #this branch covers the first time we see an option
                         value = []
                         for i in e[1:]:
                             if isinstance(i, ParseResults):
@@ -157,17 +178,18 @@ class SnortSig(object):
                                  "dst": sig["dst"].asList(),
                                  "dst_port": sig["dst_port"].asList(),
                                  "options": options,
-                                 "comments": self.comments
+                                 "comments": self.comments,
+                                 "raw": sigline
                 })
                 self.comments = []
+
+    def getall(self):
+        return self.sigs
 
     def fromfile(self, sigfile):
         with open(sigfile, 'rb') as f:
             sigs = f.read()
         self.fromstring(sigs)
-
-    def getall(self):
-        return self.sigs
 
     def search(self, term, attribute=None, exact=True):
         ret = []

@@ -5,7 +5,7 @@ A read-only (for now) interface to snort signatures using pyparsing on the back 
 ## Known Bugs
    * snortsig currently doesn't deal well with escaped semi-colons.
    * snortsig currently doesn't deal well with double quotes inside quoted fields.
-   * snortsig can't write signatures back out to strings or files.
+   * snortsig can't write modified signatures back out to strings or files. (technically it can, it just can't ensure correct relative order of content options)
 
 ## Example
 
@@ -65,6 +65,11 @@ How many signatures use the 'itype' attribute?
     In [1]: len(ss.search("",attribute='itype',exact=False))
     Out[1]: 123
 
+Only write out signatures that use the itype attribute:
+
+    In [1]: [s["raw"] for s in ss.search("",attribute='itype',exact=False)]
+    Out[1]: (lots of signatures go here)
+
 ## How To Use
 ### Install
     pip install snortsig
@@ -114,6 +119,8 @@ Rather than create an object to encapsulate a single snort signature, we just st
    * for payload detection options that take modifiers, the modifiers are grouped with the option to which they apply
    * order is preserved
    * all of the values are lists.  Where options have multiple values (or there are multiple instances of an option), the lists may be nested.  Where options have simple string values, the top level list contains a strings.  This is done to maintain consistent semantics when accessing data.
+   * the 'raw' key houses the original signature line
+   * the 'comments' key holds what we think are the comment lines that apply to this signature
 
 
 Example signature dict:
