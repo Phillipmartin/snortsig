@@ -28,7 +28,7 @@ def test_single_sig():
     assert sig_obj[0]["dst_port"][1] == '443'
 
 def test_parse_VRT_community():
-    response = requests.get("https://s3.amazonaws.com/snort-org/www/rules/community/community-rules.tar.gz")
+    response = requests.get("https://www.snort.org/downloads/community/community-rules.tar.gz")
     results = tarfile.open(mode='r:gz', fileobj=StringIO.StringIO(response.content))
     sig_fobj=results.extractfile('community-rules/community.rules')
     ss = snortsig.SnortSig()
